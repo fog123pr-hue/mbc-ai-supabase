@@ -14,6 +14,7 @@ const App: React.FC = () => {
   const [timer, setTimer] = useState(0);
   const [aiHint, setAiHint] = useState('Welcome to the Quest!');
   const [isNewRecord, setIsNewRecord] = useState(false);
+  const [inputError, setInputError] = useState(false);
   const timerRef = useRef<number | null>(null);
 
   // Load best record on mount
@@ -27,13 +28,16 @@ const App: React.FC = () => {
 
   const startGame = () => {
     if (!playerName.trim()) return;
-    setTargetNumber(Math.floor(Math.random() * 100) + 1);
+    // Correctly generates an integer between 1 and 100 (inclusive)
+    const newTarget = Math.floor(Math.random() * 100) + 1;
+    setTargetNumber(newTarget);
     setGuesses([]);
     setTimer(0);
     setCurrentGuess('');
-    setAiHint(`I'm thinking of a number between 1 and 100, ${playerName}.`);
+    setAiHint(`I've picked a number between 1 and 100, ${playerName}. Good luck!`);
     setStatus(GameStatus.PLAYING);
     setIsNewRecord(false);
+    setInputError(false);
 
     timerRef.current = window.setInterval(() => {
       setTimer((prev) => prev + 1);
@@ -50,8 +54,14 @@ const App: React.FC = () => {
   const handleGuess = async (e: React.FormEvent) => {
     e.preventDefault();
     const num = parseInt(currentGuess);
-    if (isNaN(num) || num < 1 || num > 100) return;
+    
+    if (isNaN(num) || num < 1 || num > 100) {
+      setInputError(true);
+      setAiHint("Please enter a valid number between 1 and 100!");
+      return;
+    }
 
+    setInputError(false);
     const feedback = num > targetNumber ? 'High' : num < targetNumber ? 'Low' : 'Correct';
     const newEntry: GuessEntry = {
       number: num,
@@ -102,7 +112,7 @@ const App: React.FC = () => {
         <h1 className="text-5xl font-extrabold mb-2 bg-gradient-to-r from-blue-400 to-emerald-400 bg-clip-text text-transparent">
           GEMINI QUEST
         </h1>
-        <p className="text-slate-400 uppercase tracking-widest text-sm">The Ultimate Number Challenge</p>
+        <p className="text-slate-400 uppercase tracking-widest text-sm">Find the number between 1 and 100</p>
       </div>
 
       <div className="w-full max-w-xl glass-panel rounded-3xl p-8 shadow-2xl relative overflow-hidden">
@@ -115,31 +125,34 @@ const App: React.FC = () => {
             {/* Hall of Fame Snippet */}
             {bestRecord ? (
               <div className="bg-slate-800/50 p-6 rounded-2xl border border-blue-500/20">
-                <h2 className="text-blue-400 text-xs font-bold uppercase mb-3 flex items-center gap-2">
-                  <i className="fas fa-trophy"></i> Current World Record
-                </h2>
+                <div className="flex justify-between items-center mb-4">
+                    <h2 className="text-blue-400 text-xs font-bold uppercase flex items-center gap-2">
+                        <i className="fas fa-trophy text-amber-400"></i> Best Record
+                    </h2>
+                    <span className="text-[10px] text-slate-500 italic">Global Leaderboard</span>
+                </div>
                 <div className="flex justify-between items-end">
                   <div>
                     <div className="text-2xl font-bold">{bestRecord.player_name}</div>
-                    <div className="text-slate-400 text-sm">Legendary Challenger</div>
+                    <div className="text-slate-400 text-sm">Champion</div>
                   </div>
                   <div className="text-right">
                     <div className="text-xl font-bold text-emerald-400">{bestRecord.attempts} <span className="text-xs text-slate-500 font-normal">guesses</span></div>
-                    <div className="text-sm text-slate-300">{bestRecord.time_seconds}s <span className="text-xs text-slate-500 font-normal">time</span></div>
+                    <div className="text-sm text-slate-300">{bestRecord.time_seconds}s <span className="text-xs text-slate-500 font-normal">elapsed</span></div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div className="text-center p-6 text-slate-500 italic">No legends recorded yet. Be the first.</div>
+              <div className="text-center p-6 text-slate-500 italic">The throne is empty. Claim it.</div>
             )}
 
             <div className="space-y-4">
-              <label className="block text-sm font-medium text-slate-300 ml-1">What shall we call you, Challenger?</label>
+              <label className="block text-sm font-medium text-slate-300 ml-1">Enter Challenger Name</label>
               <input 
                 type="text" 
                 value={playerName}
                 onChange={(e) => setPlayerName(e.target.value)}
-                placeholder="Enter your name..."
+                placeholder="Ex: King Arthur"
                 className="w-full bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-4 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all placeholder:text-slate-600"
               />
               <button 
@@ -147,7 +160,7 @@ const App: React.FC = () => {
                 disabled={!playerName.trim()}
                 className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed py-4 rounded-xl font-bold text-lg shadow-lg shadow-blue-500/20 transition-all transform active:scale-95"
               >
-                START QUEST
+                ENTER THE QUEST (1-100)
               </button>
             </div>
           </div>
@@ -166,8 +179,8 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            <div className="bg-slate-900/80 p-4 rounded-2xl border border-slate-800 min-h-[80px] flex items-center justify-center text-center">
-              <p className="text-slate-200 font-medium italic">"{aiHint}"</p>
+            <div className={`bg-slate-900/80 p-4 rounded-2xl border ${inputError ? 'border-rose-500/50 animate-shake' : 'border-slate-800'} min-h-[80px] flex items-center justify-center text-center transition-colors`}>
+              <p className={`${inputError ? 'text-rose-400' : 'text-slate-200'} font-medium italic`}>"{aiHint}"</p>
             </div>
 
             <form onSubmit={handleGuess} className="flex gap-2">
@@ -177,9 +190,12 @@ const App: React.FC = () => {
                 min="1" 
                 max="100"
                 value={currentGuess}
-                onChange={(e) => setCurrentGuess(e.target.value)}
+                onChange={(e) => {
+                    setCurrentGuess(e.target.value);
+                    if (inputError) setInputError(false);
+                }}
                 placeholder="1-100"
-                className="flex-1 bg-slate-900/50 border border-slate-700 rounded-xl px-4 py-4 text-2xl text-center font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
+                className={`flex-1 bg-slate-900/50 border ${inputError ? 'border-rose-500' : 'border-slate-700'} rounded-xl px-4 py-4 text-2xl text-center font-bold focus:outline-none focus:ring-2 ${inputError ? 'focus:ring-rose-500/50' : 'focus:ring-emerald-500/50'} transition-all`}
               />
               <button 
                 type="submit"
@@ -190,15 +206,23 @@ const App: React.FC = () => {
             </form>
 
             <div className="space-y-2">
-              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Guess History</h3>
+              <h3 className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1 flex justify-between">
+                <span>Recent Guesses</span>
+                <span>Latest First</span>
+              </h3>
               <div className="max-h-48 overflow-y-auto space-y-2 pr-2 custom-scrollbar">
                 {guesses.length === 0 ? (
-                  <div className="text-center py-8 text-slate-600 text-sm italic">Take your first shot...</div>
+                  <div className="text-center py-8 text-slate-600 text-sm italic">The battlefield is quiet. Start guessing!</div>
                 ) : (
                   guesses.map((g, i) => (
-                    <div key={g.timestamp} className={`flex justify-between items-center p-3 rounded-lg border ${i === 0 ? 'bg-slate-700/50 border-blue-500/30' : 'bg-slate-800/30 border-transparent'}`}>
-                      <span className="text-lg font-bold">#{g.number}</span>
-                      <span className={`text-xs font-bold uppercase ${g.feedback === 'High' ? 'text-rose-400' : 'text-amber-400'}`}>
+                    <div key={g.timestamp} className={`flex justify-between items-center p-3 rounded-lg border ${i === 0 ? 'bg-slate-700/50 border-blue-500/30' : 'bg-slate-800/30 border-transparent shadow-inner'}`}>
+                      <div className="flex items-center gap-3">
+                        <span className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${i === 0 ? 'bg-blue-500 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                            {guesses.length - i}
+                        </span>
+                        <span className="text-lg font-bold">#{g.number}</span>
+                      </div>
+                      <span className={`text-xs font-bold px-2 py-1 rounded uppercase ${g.feedback === 'High' ? 'text-rose-400 bg-rose-400/10' : 'text-amber-400 bg-amber-400/10'}`}>
                         {g.feedback}
                       </span>
                     </div>
@@ -216,41 +240,43 @@ const App: React.FC = () => {
             </div>
             
             <div className="space-y-2">
-              <h2 className="text-4xl font-black text-white">VICORY!</h2>
-              <p className="text-slate-400">The number was indeed <span className="text-white font-bold">{targetNumber}</span></p>
+              <h2 className="text-4xl font-black text-white">CORRECT!</h2>
+              <p className="text-slate-400">The secret number was <span className="text-white font-bold text-xl">{targetNumber}</span></p>
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <div className="bg-slate-800/50 p-4 rounded-2xl">
-                <div className="text-xs text-slate-500 font-bold uppercase mb-1">Total Time</div>
-                <div className="text-2xl font-bold">{timer}s</div>
+              <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <div className="text-xs text-slate-500 font-bold uppercase mb-1 tracking-tighter">Time Taken</div>
+                <div className="text-3xl font-bold">{timer}<span className="text-sm font-normal text-slate-500 ml-1">sec</span></div>
               </div>
-              <div className="bg-slate-800/50 p-4 rounded-2xl">
-                <div className="text-xs text-slate-500 font-bold uppercase mb-1">Attempts</div>
-                <div className="text-2xl font-bold">{guesses.length}</div>
+              <div className="bg-slate-800/50 p-6 rounded-2xl border border-slate-700">
+                <div className="text-xs text-slate-500 font-bold uppercase mb-1 tracking-tighter">Attempts</div>
+                <div className="text-3xl font-bold">{guesses.length}<span className="text-sm font-normal text-slate-500 ml-1">times</span></div>
               </div>
             </div>
 
             {isNewRecord && (
-              <div className="bg-gradient-to-r from-amber-500/20 to-yellow-500/20 border border-amber-500/50 p-4 rounded-2xl animate-pulse">
-                <p className="text-amber-400 font-bold">✨ NEW WORLD RECORD! ✨</p>
+              <div className="bg-gradient-to-r from-amber-500/20 via-yellow-400/20 to-amber-500/20 border border-amber-500/50 p-4 rounded-2xl animate-pulse flex items-center justify-center gap-2">
+                <i className="fas fa-star text-amber-400"></i>
+                <p className="text-amber-400 font-bold">✨ WORLD RECORD ACHIEVED! ✨</p>
+                <i className="fas fa-star text-amber-400"></i>
               </div>
             )}
 
             <button 
               onClick={resetGame}
-              className="w-full bg-slate-100 hover:bg-white text-slate-900 py-4 rounded-xl font-bold text-lg transition-all transform active:scale-95"
+              className="w-full bg-slate-100 hover:bg-white text-slate-900 py-4 rounded-xl font-bold text-lg transition-all transform active:scale-95 flex items-center justify-center gap-2"
             >
-              PLAY AGAIN
+              <i className="fas fa-redo-alt"></i> PLAY AGAIN
             </button>
           </div>
         )}
       </div>
 
       <footer className="mt-8 text-slate-600 text-xs flex items-center gap-4">
-        <span>POWERED BY GEMINI 3 FLASH</span>
+        <span>GEMINI 3 FLASH AI ENGINE</span>
         <span className="w-1 h-1 bg-slate-800 rounded-full"></span>
-        <span>SUPABASE REALTIME DATA</span>
+        <span>SUPABASE DATA REALTIME</span>
       </footer>
 
       <style>{`
@@ -266,6 +292,14 @@ const App: React.FC = () => {
         }
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
           background: #475569;
+        }
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+        .animate-shake {
+            animation: shake 0.2s cubic-bezier(.36,.07,.19,.97) both;
         }
       `}</style>
     </div>
